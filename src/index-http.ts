@@ -260,8 +260,8 @@ async function main() {
     sessionIdGenerator: () => crypto.randomUUID(),
   });
 
-  const httpServer = createHttpServer((req: IncomingMessage, res: ServerResponse) => {
-    transport.handleRequest(req, res);
+  const httpServer = createHttpServer(async (req: IncomingMessage, res: ServerResponse) => {
+    await transport.handleRequest(req, res);
   });
 
   httpServer.on('error', (error) => {
@@ -272,6 +272,10 @@ async function main() {
 
   const port = 3005;
   const host = "0.0.0.0";
+
+  httpServer.listen(port, host, () => {
+    Logger.log(`opencode-mcp-tool HTTP server listening on http://${host}:${port}`);
+  });
 
   httpServer.listen(port, host, () => {
     Logger.log(`opencode-mcp-tool HTTP server listening on http://${host}:${port}`);
