@@ -2,7 +2,7 @@
 
 import { Command } from "commander";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
@@ -17,6 +17,7 @@ import {
   GetPromptResult,
   CallToolResult,
 } from "@modelcontextprotocol/sdk/types.js";
+import { createServer as createHttpServer, IncomingMessage, ServerResponse } from "node:http";
 import { Logger } from "./utils/logger.js";
 import { PROTOCOL, ToolArguments } from "./constants.js";
 import { setServerConfig, getServerConfig } from "./config.js";
@@ -37,7 +38,6 @@ const server = new Server(
   capabilities: {
     tools: {},
     prompts: {},
-    // notifications: {},
     logging: {},
   },
 },
@@ -53,19 +53,13 @@ async function sendNotification(method: string, params: any) {
   }
 }
 
-/**
- * @param progressToken The progress token provided by the client
- * @param progress The current progress value
- * @param total Optional total value
- * @param message Optional status message
- */
 async function sendProgressNotification(
   progressToken: string | number | undefined,
   progress: number,
   total?: number,
   message?: string
 ) {
-  if (!progressToken) return; // Only send if client requested progress
+  if (!progressToken) return;
 
   try {
     const params: any = {
@@ -73,7 +67,7 @@ async function sendProgressNotification(
       progress
     };
 
-    if (total !== undefined) params.total = total; // future cache progress
+    if (total !== undefined) params.total = total;
     if (message) params.message = message;
 
     await server.notification({
@@ -91,7 +85,7 @@ function startProgressUpdates(
 ) {
   isProcessing = true;
   currentOperationName = operationName;
-  latestOutput = ""; // Reset latest output
+  latestOutput = "";
 
   const progressMessages = [
     `${operationName} - OpenCode is analyzing your request...`,
@@ -104,25 +98,21 @@ function startProgressUpdates(
   let messageIndex = 0;
   let progress = 0;
 
-  // Send immediate acknowledgment if progress requested
   if (progressToken) {
     sendProgressNotification(
       progressToken,
       0,
-      undefined, // No total - indeterminate progress
+      undefined,
       `Starting ${operationName}`
     );
   }
 
-  // Keep client alive with periodic updates
   const progressInterval = setInterval(async () => {
     if (isProcessing && progressToken) {
-      // Simply increment progress value
       progress += 1;
 
-      // Include latest output if available
       const baseMessage = progressMessages[messageIndex % progressMessages.length];
-      const outputPreview = latestOutput.slice(-150).trim(); // Last 150 chars
+      const outputPreview = latestOutput.slice(-150).trim();
       const message = outputPreview
         ? `${baseMessage}\nOutput preview: ...${outputPreview}`
         : baseMessage;
@@ -130,14 +120,14 @@ function startProgressUpdates(
       await sendProgressNotification(
         progressToken,
         progress,
-        undefined, // No total - indeterminate progress
+        undefined,
         message
       );
       messageIndex++;
     } else if (!isProcessing) {
       clearInterval(progressInterval);
     }
-  }, PROTOCOL.KEEPALIVE_INTERVAL); // Every 25 seconds
+  }, PROTOCOL.KEEPALIVE_INTERVAL);
 
   return { interval: progressInterval, progressToken };
 }
@@ -146,12 +136,11 @@ function stopProgressUpdates(
   progressData: { interval: NodeJS.Timeout; progressToken?: string | number },
   success: boolean = true
 ) {
-  const operationName = currentOperationName; // Store before clearing
+  const operationName = currentOperationName;
   isProcessing = false;
   currentOperationName = "";
   clearInterval(progressData.interval);
 
-  // Send final progress notification if client requested progress
   if (progressData.progressToken) {
     sendProgressNotification(
       progressData.progressToken,
@@ -162,34 +151,27 @@ function stopProgressUpdates(
   }
 }
 
-// tools/list
 server.setRequestHandler(ListToolsRequestSchema, async (request: ListToolsRequest): Promise<{ tools: Tool[] }> => {
   return { tools: getToolDefinitions() as unknown as Tool[] };
 });
 
-// tools/get
 server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest): Promise<CallToolResult> => {
   const toolName: string = request.params.name;
 
   if (toolExists(toolName)) {
-    // Check if client requested progress updates
     const progressToken = (request.params as any)._meta?.progressToken;
 
-    // Start progress updates if client requested them
     const progressData = startProgressUpdates(toolName, progressToken);
 
     try {
-      // Get prompt and other parameters from arguments with proper typing
       const args: ToolArguments = (request.params.arguments as ToolArguments) || {};
 
       Logger.toolInvocation(toolName, request.params.arguments);
 
-      // Execute the tool using the unified registry with progress callback
       const result = await executeTool(toolName, args, (newOutput) => {
         latestOutput = newOutput;
       });
 
-      // Stop progress updates
       stopProgressUpdates(progressData, true);
 
       return {
@@ -202,7 +184,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest)
         isError: false,
       };
     } catch (error) {
-      // Stop progress updates on error
       stopProgressUpdates(progressData, false);
 
       Logger.error(`Error in tool '${toolName}':`, error);
@@ -225,12 +206,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest)
   }
 });
 
-// prompts/list
 server.setRequestHandler(ListPromptsRequestSchema, async (request: ListPromptsRequest): Promise<{ prompts: Prompt[] }> => {
   return { prompts: getPromptDefinitions() as unknown as Prompt[] };
 });
 
-// prompts/get
 server.setRequestHandler(GetPromptRequestSchema, async (request: GetPromptRequest): Promise<GetPromptResult> => {
   const promptName = request.params.name;
   const args = request.params.arguments || {};
@@ -252,17 +231,16 @@ server.setRequestHandler(GetPromptRequestSchema, async (request: GetPromptReques
   };
 });
 
-// Setup CLI arguments and start the server
 async function main() {
   const program = new Command();
 
   program
-    .name("opencode-mcp")
-    .description("MCP server for OpenCode CLI integration")
+    .name("opencode-mcp-http")
+    .description("MCP server for OpenCode CLI integration with HTTP transport")
     .version("1.1.4")
     .requiredOption("-m, --model <model>", "Primary model to use (e.g., google/gemini-2.5-pro)")
     .option("-f, --fallback-model <model>", "Fallback model for quota/error situations")
-    .parse();
+    .parse(process.argv);
 
   const options = program.opts();
 
@@ -273,17 +251,34 @@ async function main() {
 
   const config = getServerConfig();
 
-  Logger.debug("init opencode-mcp-tool with model:", config.primaryModel);
+  Logger.debug("init opencode-mcp-tool with HTTP transport, model:", config.primaryModel);
   if (config.fallbackModel) {
     Logger.debug("fallback model:", config.fallbackModel);
   }
 
-  const transport = new StdioServerTransport();
+  const transport = new StreamableHTTPServerTransport({
+    sessionIdGenerator: () => crypto.randomUUID(),
+  });
+
+  const httpServer = createHttpServer((req: IncomingMessage, res: ServerResponse) => {
+    transport.handleRequest(req, res);
+  });
+
+  httpServer.on('error', (error) => {
+    Logger.error('HTTP server error:', error);
+  });
+
   await server.connect(transport);
-  Logger.debug("opencode-mcp-tool listening on stdio");
+
+  const port = 3005;
+  const host = "127.0.0.1";
+
+  httpServer.listen(port, host, () => {
+    Logger.log(`opencode-mcp-tool HTTP server listening on http://${host}:${port}`);
+  });
 }
 
 main().catch((error) => {
   Logger.error("Fatal error:", error);
   process.exit(1);
-}); 
+});
