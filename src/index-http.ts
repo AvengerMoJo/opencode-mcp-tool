@@ -271,7 +271,7 @@ async function main() {
   await server.connect(transport);
 
   const port = 3005;
-  const host = "127.0.0.1";
+  const host = "0.0.0.0";
 
   httpServer.listen(port, host, () => {
     Logger.log(`opencode-mcp-tool HTTP server listening on http://${host}:${port}`);
