@@ -1,5 +1,30 @@
 # HTTP Transport with Security
 
+## Debug Mode
+
+Enable verbose logging to see request details:
+
+```bash
+# Using --debug flag
+node dist/index-http.js --model <model> --mcp-api-key <key> --debug
+
+# Using environment variable
+DEBUG=true node dist/index-http.js --model <model> --mcp-api-key <key>
+```
+
+With debug enabled, you'll see:
+- Request method and URL
+- Remote address of client
+- All HTTP headers
+- API key validation status
+
+Example debug output:
+```
+[OMCPT] POST /mcp from 127.0.0.1
+[OMCPT] Headers: {"content-type":"application/json","accept":"text/event-stream, application/json","mcp-api-key":"secret123"}
+[OMCPT] API key validated successfully
+```
+
 ## MCP_API_KEY Authentication
 
 When running the HTTP server on a public interface (0.0.0.0), you can secure access using the `--mcp-api-key` option.
