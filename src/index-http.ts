@@ -21,6 +21,7 @@ import { createServer as createHttpServer, IncomingMessage, ServerResponse } fro
 import { Logger } from "./utils/logger.js";
 import { PROTOCOL, ToolArguments } from "./constants.js";
 import { setServerConfig, getServerConfig } from "./config.js";
+import { randomUUID } from "node:crypto";
 
 import {
   getToolDefinitions,
@@ -257,7 +258,7 @@ async function main() {
   }
 
   const transport = new StreamableHTTPServerTransport({
-    sessionIdGenerator: () => crypto.randomUUID(),
+    sessionIdGenerator: () => randomUUID(),
   });
 
   const httpServer = createHttpServer(async (req: IncomingMessage, res: ServerResponse) => {
@@ -272,10 +273,6 @@ async function main() {
 
   const port = 3005;
   const host = "0.0.0.0";
-
-  httpServer.listen(port, host, () => {
-    Logger.log(`opencode-mcp-tool HTTP server listening on http://${host}:${port}`);
-  });
 
   httpServer.listen(port, host, () => {
     Logger.log(`opencode-mcp-tool HTTP server listening on http://${host}:${port}`);
