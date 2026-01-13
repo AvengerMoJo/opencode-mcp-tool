@@ -241,7 +241,7 @@ async function main() {
     .version("1.1.4")
     .requiredOption("-m, --model <model>", "Primary model to use (e.g., google/gemini-2.5-pro)")
     .option("-f, --fallback-model <model>", "Fallback model for quota/error situations")
-    .option("-k, --mcp-api-key <key>", "MCP API Key for request authentication (sent in MCP-API-KEY header)")
+    .option("-k, --mcp-api-key <key>", "MCP API Key for authentication (validate via MCP-API-KEY header)")
     .option("-p, --port <port>", "HTTP server port", "3005")
     .option("-h, --host <host>", "HTTP server host", "0.0.0.0")
     .parse(process.argv);
