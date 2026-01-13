@@ -21,7 +21,6 @@ import { createServer as createHttpServer, IncomingMessage, ServerResponse } fro
 import { Logger } from "./utils/logger.js";
 import { PROTOCOL, ToolArguments } from "./constants.js";
 import { setServerConfig, getServerConfig } from "./config.js";
-import { randomUUID } from "node:crypto";
 
 import {
   getToolDefinitions,
@@ -30,6 +29,8 @@ import {
   toolExists,
   getPromptMessage
 } from "./tools/index.js";
+
+const DEBUG_MODE = process.env.DEBUG === "true";
 
 const server = new Server(
   {
@@ -244,6 +245,7 @@ async function main() {
     .option("-k, --mcp-api-key <key>", "MCP API Key for authentication (validate via MCP-API-KEY header)")
     .option("-p, --port <port>", "HTTP server port", "3005")
     .option("-h, --host <host>", "HTTP server host", "0.0.0.0")
+    .option("-d, --debug", "Enable debug logging")
     .parse(process.argv);
 
   const options = program.opts();
@@ -261,12 +263,18 @@ async function main() {
   }
 
   const mcpApiKey = options.mcpApiKey;
+  const debug = options.debug || DEBUG_MODE;
 
   const transport = new StreamableHTTPServerTransport({
-    sessionIdGenerator: () => randomUUID(),
+    sessionIdGenerator: () => crypto.randomUUID(),
   });
 
   const httpServer = createHttpServer(async (req: IncomingMessage, res: ServerResponse) => {
+    if (debug) {
+      Logger.debug(`${req.method} ${req.url} from ${req.socket.remoteAddress}`);
+      Logger.debug(`Headers: ${JSON.stringify(req.headers, null, 2)}`);
+    }
+
     if (mcpApiKey) {
       const providedKey = req.headers["mcp-api-key"];
       if (providedKey !== mcpApiKey) {
@@ -274,6 +282,9 @@ async function main() {
         res.writeHead(401, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ error: "Unauthorized: Invalid MCP-API-KEY" }));
         return;
+      }
+      if (debug) {
+        Logger.debug(`API key validated successfully`);
       }
     }
     await transport.handleRequest(req, res);
