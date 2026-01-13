@@ -242,7 +242,7 @@ async function main() {
     .version("1.1.4")
     .requiredOption("-m, --model <model>", "Primary model to use (e.g., google/gemini-2.5-pro)")
     .option("-f, --fallback-model <model>", "Fallback model for quota/error situations")
-    .option("-k, --mcp-api-key <key>", "MCP API Key for authentication (validate via MCP-API-KEY header)")
+    .option("-t, --bearer-token <token>", "Bearer token for authentication (Authorization: Bearer <token>)")
     .option("-p, --port <port>", "HTTP server port", "3005")
     .option("-h, --host <host>", "HTTP server host", "0.0.0.0")
     .option("-d, --debug", "Enable debug logging")
@@ -262,7 +262,7 @@ async function main() {
     Logger.debug("fallback model:", config.fallbackModel);
   }
 
-  const mcpApiKey = options.mcpApiKey;
+  const bearerToken = options.bearerToken;
   const debug = options.debug || DEBUG_MODE;
 
   const transport = new StreamableHTTPServerTransport({
@@ -271,20 +271,45 @@ async function main() {
 
   const httpServer = createHttpServer(async (req: IncomingMessage, res: ServerResponse) => {
     if (debug) {
-      Logger.debug(`${req.method} ${req.url} from ${req.socket.remoteAddress}`);
-      Logger.debug(`Headers: ${JSON.stringify(req.headers, null, 2)}`);
+      Logger.debug(`=== INCOMING REQUEST ===`);
+      Logger.debug(`Method: ${req.method}`);
+      Logger.debug(`URL: ${req.url}`);
+      Logger.debug(`Remote Address: ${req.socket.remoteAddress}`);
+      Logger.debug(`Headers:`, req.headers);
+      Logger.debug(`All header keys:`, Object.keys(req.headers));
     }
 
-    if (mcpApiKey) {
-      const providedKey = req.headers["mcp-api-key"];
-      if (providedKey !== mcpApiKey) {
-        Logger.warn(`Unauthorized request from ${req.socket.remoteAddress}`);
+    if (bearerToken) {
+      const authHeader = req.headers.authorization;
+      if (debug) {
+        Logger.debug(`Authorization header:`, authHeader);
+      }
+
+      if (!authHeader) {
+        Logger.warn(`Unauthorized request from ${req.socket.remoteAddress}: Missing Authorization header`);
         res.writeHead(401, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ error: "Unauthorized: Invalid MCP-API-KEY" }));
+        res.end(JSON.stringify({ error: "Unauthorized: Missing Authorization header" }));
         return;
       }
+
+      if (!authHeader.toLowerCase().startsWith("bearer ")) {
+        Logger.warn(`Unauthorized request from ${req.socket.remoteAddress}: Invalid Authorization type (expected Bearer)`);
+        res.writeHead(401, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "Unauthorized: Invalid Authorization type (expected Bearer token)" }));
+        return;
+      }
+
+      const providedToken = authHeader.substring(7);
+      if (providedToken !== bearerToken) {
+        Logger.warn(`Unauthorized request from ${req.socket.remoteAddress}: Invalid token`);
+        Logger.warn(`Expected: ${bearerToken.substring(0, 8)}..., Got: ${providedToken.substring(0, 8)}...`);
+        res.writeHead(401, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "Unauthorized: Invalid bearer token" }));
+        return;
+      }
+
       if (debug) {
-        Logger.debug(`API key validated successfully`);
+        Logger.debug(`Bearer token validated successfully`);
       }
     }
     await transport.handleRequest(req, res);
