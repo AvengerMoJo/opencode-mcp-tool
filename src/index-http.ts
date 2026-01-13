@@ -241,6 +241,9 @@ async function main() {
     .version("1.1.4")
     .requiredOption("-m, --model <model>", "Primary model to use (e.g., google/gemini-2.5-pro)")
     .option("-f, --fallback-model <model>", "Fallback model for quota/error situations")
+    .option("-k, --mcp-api-key <key>", "MCP API Key for authentication (validate via MCP-API-KEY header)")
+    .option("-p, --port <port>", "HTTP server port", "3005")
+    .option("-h, --host <host>", "HTTP server host", "0.0.0.0")
     .parse(process.argv);
 
   const options = program.opts();
@@ -257,11 +260,22 @@ async function main() {
     Logger.debug("fallback model:", config.fallbackModel);
   }
 
+  const mcpApiKey = options.mcpApiKey;
+
   const transport = new StreamableHTTPServerTransport({
     sessionIdGenerator: () => randomUUID(),
   });
 
   const httpServer = createHttpServer(async (req: IncomingMessage, res: ServerResponse) => {
+    if (mcpApiKey) {
+      const providedKey = req.headers["mcp-api-key"];
+      if (providedKey !== mcpApiKey) {
+        Logger.warn(`Unauthorized request from ${req.socket.remoteAddress}`);
+        res.writeHead(401, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "Unauthorized: Invalid MCP-API-KEY" }));
+        return;
+      }
+    }
     await transport.handleRequest(req, res);
   });
 
@@ -271,11 +285,25 @@ async function main() {
 
   await server.connect(transport);
 
-  const port = 3005;
-  const host = "0.0.0.0";
+  const port = parseInt(options.port, 10);
+  const host = options.host;
 
   httpServer.listen(port, host, () => {
     Logger.log(`opencode-mcp-tool HTTP server listening on http://${host}:${port}`);
+    process.on('SIGTERM', () => {
+      Logger.log('SIGTERM received, shutting down gracefully...');
+      httpServer.close(() => {
+        Logger.log('HTTP server closed');
+	process.exit(0);
+      });
+    });
+    process.on('SIGINT', () => {
+      Logger.log('SIGINT received, shutting down gracefully...');
+      httpServer.close(() => {
+        Logger.log('HTTP server closed');
+	process.exit(0);
+      });
+    });
   });
 }
 
