@@ -266,7 +266,7 @@ async function main() {
   const debug = options.debug || DEBUG_MODE;
 
   const transport = new StreamableHTTPServerTransport({
-    sessionIdGenerator: () => crypto.randomUUID(),
+    sessionIdGenerator: undefined,
   });
 
   const httpServer = createHttpServer(async (req: IncomingMessage, res: ServerResponse) => {
@@ -277,6 +277,35 @@ async function main() {
       Logger.debug(`Remote Address: ${req.socket.remoteAddress}`);
       Logger.debug(`Headers:`, req.headers);
       Logger.debug(`All header keys:`, Object.keys(req.headers));
+    }
+
+    const originalWriteHead = res.writeHead;
+    res.writeHead = function(statusCode: number, statusMessageOrHeaders?: string | any, headers?: any) {
+      let combinedHeaders: any;
+      
+      if (typeof statusMessageOrHeaders === 'object') {
+        combinedHeaders = {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+          'Access-Control-Allow-Headers': 'authorization, content-type, accept',
+          ...statusMessageOrHeaders
+        };
+        return (originalWriteHead as any).call(res, statusCode, combinedHeaders);
+      } else {
+        combinedHeaders = {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+          'Access-Control-Allow-Headers': 'authorization, content-type, accept',
+          ...(headers || {})
+        };
+        return (originalWriteHead as any).call(res, statusCode, statusMessageOrHeaders || '', combinedHeaders);
+      }
+    } as any;
+
+    if (req.method === 'OPTIONS') {
+      res.writeHead(200);
+      res.end();
+      return;
     }
 
     if (bearerToken) {

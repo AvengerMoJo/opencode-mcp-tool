@@ -1,5 +1,88 @@
 # HTTP Transport with Security
 
+## Stateless Mode for Multiple Clients
+
+The server operates in **stateless mode** which allows multiple independent clients to connect and initialize simultaneously.
+
+### Why Stateless Mode?
+
+- **Multiple Users** - Each browser user can connect independently
+- **No Session Tracking** - No in-memory session state between requests
+- **No Session ID Headers** - Simpler client implementation
+- **Independent Initialization** - Each request can include `initialize` without "Server already initialized" errors
+
+### Session Management
+
+In stateless mode:
+- No session IDs are generated or validated
+- Clients don't need to track or send `Mcp-Session-Id` headers
+- Each HTTP request is handled independently
+- Multiple clients can make parallel `initialize` requests
+
+## CORS Support
+
+The server automatically adds CORS headers to **all responses** (both preflight and regular requests).
+
+### CORS Headers
+
+All responses include these CORS headers:
+
+```
+Access-Control-Allow-Origin: *
+Access-Control-Allow-Methods: POST, GET, OPTIONS
+Access-Control-Allow-Headers: authorization, content-type, accept
+```
+
+### Behavior
+
+- **OPTIONS requests** → Handled immediately (no authentication required)
+- **POST/GET requests** → Require authentication (if bearer token configured)
+- **All responses** → Include CORS headers (success, error, etc.)
+- **Authorization header** → Passed through in `Access-Control-Allow-Headers`
+
+### Browser Client Support
+
+Browser clients can now make cross-origin requests without CORS errors:
+
+```javascript
+fetch('http://your-server:3005/', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer YOUR_SECRET_TOKEN',
+    'Content-Type': 'application/json',
+    'Accept': 'text/event-stream, application/json'
+  },
+  body: JSON.stringify({
+    jsonrpc: '2.0',
+    id: 1,
+    method: 'initialize',
+    params: {
+      protocolVersion: '2024-11-05',
+      capabilities: {},
+      clientInfo: { name: 'MyClient', version: '1.0.0' }
+    }
+  })
+});
+```
+
+### Testing CORS Preflight
+
+```bash
+curl -X OPTIONS http://localhost:3005/ \
+  -H 'Origin: http://localhost:8080' \
+  -H 'Access-Control-Request-Method: POST' \
+  -H 'Access-Control-Request-Headers: authorization,content-type' \
+  -v
+```
+
+Response includes:
+```
+HTTP/1.1 200 OK
+Access-Control-Allow-Origin: *
+Access-Control-Allow-Methods: POST, GET, OPTIONS
+Access-Control-Allow-Headers: authorization, content-type, accept
+```
+
 ## Bearer Token Authentication (Standard)
 
 This server uses industry-standard OAuth 2.0 Bearer token authentication via the `Authorization` header.
@@ -16,13 +99,30 @@ npm run dev:http -- --bearer-token YOUR_SECRET_TOKEN
 
 ### Client Usage
 
-Clients must include the `Authorization: Bearer <token>` header:
+**Command-line clients**:
 
 ```bash
 curl -H 'Authorization: Bearer YOUR_SECRET_TOKEN' \
   -H 'Content-Type: application/json' \
   -H 'Accept: text/event-stream, application/json' \
-  http://your-server:3005/mcp -X POST -d '{...}'
+  http://your-server:3005/ -X POST -d '{...}'
+```
+
+**Browser clients** (Dart/Flutter/JavaScript):
+
+All responses include CORS headers automatically, so browser clients can make cross-origin requests:
+
+```javascript
+// No CORS errors - server sends Access-Control-Allow-Origin: *
+fetch('http://your-server:3005/', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer YOUR_SECRET_TOKEN',
+    'Content-Type': 'application/json',
+    'Accept': 'text/event-stream, application/json'
+  },
+  body: JSON.stringify({...})
+});
 ```
 
 ### Authentication Behavior
@@ -56,7 +156,7 @@ Example debug output:
 ```
 [OMCPT] === INCOMING REQUEST ===
 [OMCPT] Method: POST
-[OMCPT] URL: /mcp
+[OMCPT] URL: /
 [OMCPT] Remote Address: 127.0.0.1
 [OMCPT] Authorization header: Bearer mysecret123
 [OMCPT] Bearer token validated successfully
@@ -75,7 +175,7 @@ curl -H 'Authorization: Bearer mysecret123' \
   -H 'Accept: text/event-stream, application/json' \
   -H 'Content-Type: application/json' \
   -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0.0"}}}' \
-  http://your-public-ip:3005/mcp -X POST
+  http://your-public-ip:3005/ -X POST
 ```
 
 ### Comparison: Bearer vs Custom Headers
@@ -95,7 +195,7 @@ With debug enabled, you'll see:
 
 Example debug output:
 ```
-[OMCPT] POST /mcp from 127.0.0.1
+[OMCPT] POST / from 127.0.0.1
 [OMCPT] Headers: {"content-type":"application/json","accept":"text/event-stream, application/json","mcp-api-key":"secret123"}
 [OMCPT] API key validated successfully
 ```
@@ -122,7 +222,7 @@ Clients must include the `MCP-API-KEY` header with their requests:
 curl -H 'MCP-API-KEY: YOUR_SECRET_KEY' \
   -H 'Content-Type: application/json' \
   -H 'Accept: text/event-stream, application/json' \
-  http://your-server:3005/mcp -X POST -d '{...}'
+  http://your-server:3005/ -X POST -d '{...}'
 ```
 
 ### Authentication Behavior
@@ -145,5 +245,5 @@ curl -H 'MCP-API-KEY: mysecret123' \
   -H 'Accept: text/event-stream, application/json' \
   -H 'Content-Type: application/json' \
   -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0.0"}}}' \
-  http://your-public-ip:3005/mcp -X POST
+  http://your-public-ip:3005/ -X POST
 ```
