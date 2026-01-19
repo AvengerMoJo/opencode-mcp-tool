@@ -39,9 +39,11 @@ export function createMCPServer(): Server {
   );
 }
 
-let isProcessing = false; let currentOperationName = ""; let latestOutput = "";
-
 export function setupProgressNotifications(server: Server) {
+  let isProcessing = false;
+  let currentOperationName = "";
+  let latestOutput = "";
+
   async function sendNotification(method: string, params: any) {
     try {
       await server.notification({ method, params });
@@ -126,7 +128,7 @@ export function setupProgressNotifications(server: Server) {
       }
     }, PROTOCOL.KEEPALIVE_INTERVAL);
 
-    return { interval: progressInterval, progressToken };
+    return { interval: progressInterval, progressToken, setLatestOutput: (output: string) => { latestOutput = output; } };
   }
 
   function stopProgressUpdates(
@@ -158,7 +160,7 @@ export function setupRequestHandlers(
   const { startProgressUpdates, stopProgressUpdates } = progressFunctions;
 
   server.setRequestHandler(ListToolsRequestSchema, async (request: ListToolsRequest): Promise<{ tools: Tool[] }> => {
-    return { tools: getToolDefinitions() as unknown as Tool[] };
+    return { tools: getToolDefinitions() };
   });
 
   server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest): Promise<CallToolResult> => {
@@ -175,7 +177,7 @@ export function setupRequestHandlers(
         Logger.toolInvocation(toolName, request.params.arguments);
 
         const result = await executeTool(toolName, args, (newOutput) => {
-          latestOutput = newOutput;
+          progressData.setLatestOutput(newOutput);
         });
 
         stopProgressUpdates(progressData, true);
@@ -213,7 +215,7 @@ export function setupRequestHandlers(
   });
 
   server.setRequestHandler(ListPromptsRequestSchema, async (request: ListPromptsRequest): Promise<{ prompts: Prompt[] }> => {
-    return { prompts: getPromptDefinitions() as unknown as Prompt[] };
+    return { prompts: getPromptDefinitions() };
   });
 
   server.setRequestHandler(GetPromptRequestSchema, async (request: GetPromptRequest): Promise<GetPromptResult> => {

@@ -7,8 +7,8 @@ import { setServerConfig, getServerConfig } from "./config.js";
 import { createMCPServer, setupProgressNotifications, setupRequestHandlers } from "./server-core.js";
 
 const server = createMCPServer();
-setupProgressNotifications(server);
-setupRequestHandlers(server, setupProgressNotifications(server));
+const progressFunctions = setupProgressNotifications(server);
+setupRequestHandlers(server, progressFunctions);
 
 async function main() {
   const program = new Command();

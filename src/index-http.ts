@@ -10,8 +10,8 @@ import { createMCPServer, setupProgressNotifications, setupRequestHandlers } fro
 const DEBUG_MODE = process.env.DEBUG === "true";
 
 const server = createMCPServer();
-setupProgressNotifications(server);
-setupRequestHandlers(server, setupProgressNotifications(server));
+const progressFunctions = setupProgressNotifications(server);
+setupRequestHandlers(server, progressFunctions);
 
 async function main() {
   const program = new Command();
@@ -110,8 +110,7 @@ async function main() {
 
       const providedToken = authHeader.substring(7);
       if (providedToken !== bearerToken) {
-        Logger.warn(`Unauthorized request from ${req.socket.remoteAddress}: Invalid token`);
-        Logger.warn(`Expected: ${bearerToken.substring(0, 8)}..., Got: ${providedToken.substring(0, 8)}...`);
+        Logger.warn(`Unauthorized request from ${req.socket.remoteAddress}: Tokens do not match`);
         res.writeHead(401, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ error: "Unauthorized: Invalid bearer token" }));
         return;
