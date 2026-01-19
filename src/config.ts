@@ -10,7 +10,7 @@ export function setServerConfig(config: ServerConfig): void {
 }
 
 export function getServerConfig(): ServerConfig {
-  if (!serverConfig.primaryModel) {
+  if (!serverConfig || !serverConfig.primaryModel) {
     throw new Error("Server configuration not initialized. Call setServerConfig() first.");
   }
   return serverConfig;
