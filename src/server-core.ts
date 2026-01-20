@@ -39,11 +39,15 @@ export function createMCPServer(): Server {
   );
 }
 
-export function setupProgressNotifications(server: Server) {
-  let isProcessing = false;
-  let currentOperationName = "";
-  let latestOutput = "";
+interface ProgressState {
+  isProcessing: boolean;
+  currentOperationName: string;
+  latestOutput: string;
+  interval: NodeJS.Timeout | null;
+  progressToken: string | number | undefined;
+}
 
+export function setupProgressNotifications(server: Server) {
   async function sendNotification(method: string, params: any) {
     try {
       await server.notification({ method, params });
@@ -81,10 +85,14 @@ export function setupProgressNotifications(server: Server) {
   function startProgressUpdates(
     operationName: string,
     progressToken?: string | number
-  ) {
-    isProcessing = true;
-    currentOperationName = operationName;
-    latestOutput = "";
+  ): ProgressState {
+    const state: ProgressState = {
+      isProcessing: true,
+      currentOperationName: operationName,
+      latestOutput: "",
+      interval: null,
+      progressToken
+    };
 
     const progressMessages = [
       `${operationName} - OpenCode is analyzing your request...`,
@@ -106,12 +114,12 @@ export function setupProgressNotifications(server: Server) {
       );
     }
 
-    const progressInterval = setInterval(async () => {
-      if (isProcessing && progressToken) {
+    state.interval = setInterval(async () => {
+      if (state.isProcessing && progressToken) {
         progress += 1;
 
         const baseMessage = progressMessages[messageIndex % progressMessages.length];
-        const outputPreview = latestOutput.slice(-150).trim();
+        const outputPreview = state.latestOutput.slice(-150).trim();
         const message = outputPreview
           ? `${baseMessage}\nOutput preview: ...${outputPreview}`
           : baseMessage;
@@ -123,26 +131,28 @@ export function setupProgressNotifications(server: Server) {
           message
         );
         messageIndex++;
-      } else if (!isProcessing) {
-        clearInterval(progressInterval);
+      } else if (!state.isProcessing && state.interval) {
+        clearInterval(state.interval);
       }
     }, PROTOCOL.KEEPALIVE_INTERVAL);
 
-    return { interval: progressInterval, progressToken, setLatestOutput: (output: string) => { latestOutput = output; } };
+    return state;
   }
 
   function stopProgressUpdates(
-    progressData: { interval: NodeJS.Timeout; progressToken?: string | number },
+    state: ProgressState,
     success: boolean = true
   ) {
-    const operationName = currentOperationName;
-    isProcessing = false;
-    currentOperationName = "";
-    clearInterval(progressData.interval);
+    const operationName = state.currentOperationName;
+    state.isProcessing = false;
+    state.currentOperationName = "";
+    if (state.interval) {
+      clearInterval(state.interval);
+    }
 
-    if (progressData.progressToken) {
+    if (state.progressToken) {
       sendProgressNotification(
-        progressData.progressToken,
+        state.progressToken,
         100,
         100,
         success ? `${operationName} completed successfully.` : `${operationName} failed.`
@@ -169,7 +179,7 @@ export function setupRequestHandlers(
     if (toolExists(toolName)) {
       const progressToken = (request.params as any)._meta?.progressToken;
 
-      const progressData = startProgressUpdates(toolName, progressToken);
+      const progressState = startProgressUpdates(toolName, progressToken);
 
       try {
         const args: ToolArguments = (request.params.arguments as ToolArguments) || {};
@@ -177,10 +187,10 @@ export function setupRequestHandlers(
         Logger.toolInvocation(toolName, request.params.arguments);
 
         const result = await executeTool(toolName, args, (newOutput) => {
-          progressData.setLatestOutput(newOutput);
+          progressState.latestOutput = newOutput;
         });
 
-        stopProgressUpdates(progressData, true);
+        stopProgressUpdates(progressState, true);
 
         return {
           content: [
@@ -192,7 +202,7 @@ export function setupRequestHandlers(
           isError: false,
         };
       } catch (error) {
-        stopProgressUpdates(progressData, false);
+        stopProgressUpdates(progressState, false);
 
         Logger.error(`Error in tool '${toolName}':`, error);
 

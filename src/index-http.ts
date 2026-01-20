@@ -24,7 +24,7 @@ async function main() {
     .option("-f, --fallback-model <model>", "Fallback model for quota/error situations")
     .option("-t, --bearer-token <token>", "Bearer token for authentication (Authorization: Bearer <token>)")
     .option("-p, --port <port>", "HTTP server port", "3005")
-    .option("-h, --host <host>", "HTTP server host", "0.0.0.0")
+    .option("-H, --host <host>", "HTTP server host", "0.0.0.0")
     .option("-d, --debug", "Enable debug logging")
     .parse(process.argv);
 
@@ -91,7 +91,9 @@ async function main() {
     if (bearerToken) {
       const authHeader = req.headers.authorization;
       if (debug) {
-        Logger.debug(`Authorization header:`, authHeader);
+        const hasAuth = !!authHeader;
+        const authType = authHeader?.split(' ')[0] || 'none';
+        Logger.debug(`Authorization header present: ${hasAuth}, type: ${authType}`);
       }
 
       if (!authHeader) {
