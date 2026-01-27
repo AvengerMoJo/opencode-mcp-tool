@@ -23,7 +23,9 @@ export class Logger {
   }
 
   static toolInvocation(toolName: string, args: any): void {
-    this.warn("Raw:", JSON.stringify(args, null, 2));
+    if (process.env.DEBUG === 'true') {
+      this.warn("Raw:", JSON.stringify(args, null, 2));
+    }
   }
 
   static toolParsedArgs(prompt: string, agent: string, model?: string): void {

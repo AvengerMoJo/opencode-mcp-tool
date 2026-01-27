@@ -12,6 +12,35 @@ This is a Model Context Protocol (MCP) server that allows AI assistants to inter
 
 Use OpenCode's multi-model capabilities directly in Claude Code with flexible model selection and plan mode features.
 
+## Features
+
+### 1. OpenCode CLI Integration
+- Execute OpenCode commands directly from AI assistants
+- Support for plan mode and build mode
+- Multi-model support with automatic fallback
+- Brainstorming and creative ideation tools
+
+### 2. OpenCode Server API Integration (NEW)
+Connect to a running OpenCode server instance to access the full web API:
+- **Session Management**: Create, list, and manage OpenCode sessions
+- **Message Operations**: Send messages and get responses from sessions
+- **File Operations**: Search files, read content, and explore workspace
+- **Configuration**: Query server settings and available providers
+- **Health Checks**: Monitor server status and connectivity
+
+**Quick Setup:**
+```bash
+# Start OpenCode server
+opencode serve --port 4096
+
+# Start MCP with server connection
+opencode-mcp-http \
+  --model google/gemini-2.5-pro \
+  --opencode-url http://localhost:4096
+```
+
+See [OpenCode Server API Documentation](docs/OPENCODE_SERVER_API.md) for complete details.
+
 ## Prerequisites
 
 Before using this tool, ensure you have:

@@ -5,6 +5,7 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { createServer as createHttpServer, IncomingMessage, ServerResponse } from "node:http";
 import { Logger } from "./utils/logger.js";
 import { setServerConfig, getServerConfig } from "./config.js";
+import { setOpenCodeServerConfig, isOpenCodeServerConfigured } from "./opencode-server-config.js";
 import { createMCPServer, setupProgressNotifications, setupRequestHandlers } from "./server-core.js";
 
 const DEBUG_MODE = process.env.DEBUG === "true";
@@ -26,6 +27,10 @@ async function main() {
     .option("-p, --port <port>", "HTTP server port", "3005")
     .option("-H, --host <host>", "HTTP server host", "0.0.0.0")
     .option("-d, --debug", "Enable debug logging")
+    .option("--opencode-url <url>", "OpenCode server URL (e.g., http://localhost:4096) - enables OpenCode server API tools")
+    .option("--opencode-username <username>", "OpenCode server HTTP basic auth username (default: opencode)", "opencode")
+    .option("--opencode-password <password>", "OpenCode server HTTP basic auth password")
+    .option("--opencode-insecure", "Disable SSL certificate verification (allows self-signed certs, dev/testing only)")
     .parse(process.argv);
 
   const options = program.opts();
@@ -40,6 +45,22 @@ async function main() {
   Logger.debug("init opencode-mcp-tool with HTTP transport, model:", config.primaryModel);
   if (config.fallbackModel) {
     Logger.debug("fallback model:", config.fallbackModel);
+  }
+
+  // Configure OpenCode server connection if provided
+  if (options.opencodeUrl) {
+    setOpenCodeServerConfig({
+      baseUrl: options.opencodeUrl,
+      username: options.opencodeUsername,
+      password: options.opencodePassword,
+      rejectUnauthorized: !options.opencodeInsecure
+    });
+    Logger.log(`OpenCode server API tools enabled - connecting to: ${options.opencodeUrl}`);
+    if (options.opencodeInsecure) {
+      Logger.warn("WARNING: SSL certificate verification is disabled (--opencode-insecure). This should only be used for development/testing.");
+    }
+  } else {
+    Logger.debug("OpenCode server API tools disabled (no --opencode-url provided)");
   }
 
   const bearerToken = options.bearerToken;
