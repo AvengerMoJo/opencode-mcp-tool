@@ -20,7 +20,7 @@ Use OpenCode's multi-model capabilities directly in Claude Code with flexible mo
 - Multi-model support with automatic fallback
 - Brainstorming and creative ideation tools
 
-### 2. OpenCode Server API Integration (NEW)
+### 2. OpenCode Server API Integration
 Connect to a running OpenCode server instance to access the full web API:
 - **Session Management**: Create, list, and manage OpenCode sessions
 - **Message Operations**: Send messages and get responses from sessions
@@ -28,7 +28,7 @@ Connect to a running OpenCode server instance to access the full web API:
 - **Configuration**: Query server settings and available providers
 - **Health Checks**: Monitor server status and connectivity
 
-**Quick Setup:**
+#### Single-Server Mode
 ```bash
 # Start OpenCode server
 opencode serve --port 4096
@@ -37,6 +37,14 @@ opencode serve --port 4096
 opencode-mcp-http \
   --model google/gemini-2.5-pro \
   --opencode-url http://localhost:4096
+```
+
+#### Multi-Server Mode
+```bash
+# Create config file at ~/.memory/opencode-mcp-tool-servers.json
+# Start MCP with servers configuration (no --model needed!)
+opencode-mcp-http \
+  --servers-config ~/.memory/opencode-mcp-tool-servers.json
 ```
 
 See [OpenCode Server API Documentation](docs/OPENCODE_SERVER_API.md) for complete details.

@@ -19,7 +19,7 @@ async function main() {
     .name("opencode-mcp")
     .description("MCP server for OpenCode CLI integration")
     .version("1.1.4")
-    .requiredOption("-m, --model <model>", "Primary model to use (e.g., google/gemini-2.5-pro)")
+    .option("-m, --model <model>", "Primary model to use for CLI-based tools (e.g., google/gemini-2.5-pro). Required when NOT using --servers-config")
     .option("-f, --fallback-model <model>", "Fallback model for quota/error situations")
     .option("--opencode-url <url>", "OpenCode server URL (e.g., http://localhost:4096) - enables OpenCode server API tools")
     .option("--opencode-username <username>", "OpenCode server HTTP basic auth username (default: opencode)", "opencode")
@@ -30,6 +30,11 @@ async function main() {
 
   const options = program.opts();
 
+  // Validate model requirement
+  if (!options.serversConfig && !options.opencodeUrl && !options.model) {
+    throw new Error("--model is required when not using --servers-config or --opencode-url");
+  }
+
   setServerConfig({
     primaryModel: options.model,
     fallbackModel: options.fallbackModel
@@ -37,7 +42,11 @@ async function main() {
 
   const config = getServerConfig();
 
-  Logger.debug("init opencode-mcp-tool with model:", config.primaryModel);
+  if (options.model) {
+    Logger.debug("init opencode-mcp-tool with model:", config.primaryModel);
+  } else {
+    Logger.debug("init opencode-mcp-tool (multi-server mode, no CLI model needed)");
+  }
   if (config.fallbackModel) {
     Logger.debug("fallback model:", config.fallbackModel);
   }

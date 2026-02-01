@@ -32,12 +32,24 @@ opencode serve --port 8080 --hostname 0.0.0.0
 
 #### For HTTP Transport
 
+**Single-Server Mode:**
 ```bash
 opencode-mcp-http \
   --model google/gemini-2.5-pro \
   --opencode-url http://localhost:4096 \
   --opencode-password mysecretpass
 ```
+
+**Multi-Server Mode:**
+```bash
+# Create servers configuration file at ~/.memory/opencode-mcp-tool-servers.json
+# See config/servers.example.json for format
+
+opencode-mcp-http \
+  --servers-config ~/.memory/opencode-mcp-tool-servers.json
+```
+
+**Note:** In multi-server mode, `--model` is not required as each server has its own model configuration.
 
 #### For stdio Transport (Claude Desktop, etc.)
 
@@ -65,11 +77,33 @@ Add to your MCP client configuration:
 
 | Option | Description | Default | Required |
 |--------|-------------|---------|----------|
-| `--opencode-url` | OpenCode server base URL | - | Yes (to enable API tools) |
+| `--opencode-url` | OpenCode server base URL (single-server mode) | - | Yes (single-server mode) |
 | `--opencode-username` | HTTP Basic Auth username | `opencode` | No |
 | `--opencode-password` | HTTP Basic Auth password | - | Only if server requires auth |
+| `--servers-config` | Path to servers JSON config file (multi-server mode) | - | No |
 
-**Note:** If `--opencode-url` is not provided, the OpenCode server API tools will be disabled and only the standard OpenCode CLI tools will be available.
+**Notes:**
+- If `--opencode-url` is provided, enables single-server mode with one OpenCode server
+- If `--servers-config` is provided, enables multi-server mode with multiple servers
+- `--model` is **not required** in multi-server mode (each server has its own config)
+- `--model` is required only when using CLI-based tools (ask-opencode, brainstorm, etc.) without server connection
+
+## Server Selection in Multi-Server Mode
+
+When using multi-server mode with `--servers-config`, all OpenCode server API tools accept an optional `server` parameter:
+
+```typescript
+{
+  "name": "opencode-session-create",
+  "arguments": {
+    "server": "my-project-name"
+  }
+}
+```
+
+- If `server` is not provided, the default server from your config is used
+- The `server` parameter corresponds to the `id` field in your servers configuration
+- Available server IDs can be viewed by listing the `servers` array in your config file
 
 ## Available MCP Tools
 
