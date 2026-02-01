@@ -5,29 +5,31 @@
 
 import { z } from "zod";
 import { UnifiedTool } from "./registry.js";
-import { getOpenCodeClient, isOpenCodeServerConfigured } from "../opencode-server-config.js";
+import { getOpenCodeClient, isOpenCodeServerConfigured, isMultiServerEnabled } from "../opencode-server-config.js";
 
 // Helper to check if OpenCode server is configured
 function ensureConfigured(): void {
   if (!isOpenCodeServerConfigured()) {
     throw new Error(
-      "OpenCode server not configured. Please start the MCP server with --opencode-url flag. " +
-      "Example: --opencode-url http://localhost:4096 --opencode-username opencode --opencode-password yourpassword"
+      "OpenCode server not configured. Please start the MCP server with --opencode-url or --servers-config flag."
     );
   }
 }
 
 // Health check tool
-const healthCheckSchema = z.object({});
+const healthCheckSchema = z.object({
+  server: z.string().optional().describe("OpenCode server ID (only in multi-server mode)")
+});
 
 export const opencodeHealthTool: UnifiedTool = {
   name: "opencode-server-health",
-  description: "Check the health and status of the connected OpenCode server",
+  description: "Check health and status of the connected OpenCode server",
   zodSchema: healthCheckSchema,
   category: "opencode",
   execute: async (args, onProgress) => {
     ensureConfigured();
-    const client = getOpenCodeClient();
+    const validatedArgs = healthCheckSchema.parse(args);
+    const client = getOpenCodeClient(validatedArgs.server);
 
     if (onProgress) {
       onProgress("Checking OpenCode server health...\n");
@@ -41,6 +43,7 @@ export const opencodeHealthTool: UnifiedTool = {
 
 // Create session tool
 const createSessionSchema = z.object({
+  server: z.string().optional().describe("OpenCode server ID (only in multi-server mode)"),
   parentID: z.string().optional().describe("Optional parent session ID for hierarchical sessions"),
 });
 
@@ -51,13 +54,13 @@ export const opencodeCreateSessionTool: UnifiedTool = {
   category: "opencode",
   execute: async (args, onProgress) => {
     ensureConfigured();
-    const client = getOpenCodeClient();
+    const validatedArgs = createSessionSchema.parse(args);
+    const client = getOpenCodeClient(validatedArgs.server);
 
     if (onProgress) {
       onProgress("Creating new OpenCode session...\n");
     }
 
-    const validatedArgs = createSessionSchema.parse(args);
     const session = await client.createSession(validatedArgs.parentID);
 
     if (onProgress) {
@@ -69,7 +72,9 @@ export const opencodeCreateSessionTool: UnifiedTool = {
 };
 
 // List sessions tool
-const listSessionsSchema = z.object({});
+const listSessionsSchema = z.object({
+  server: z.string().optional().describe("OpenCode server ID (only in multi-server mode)")
+});
 
 export const opencodeListSessionsTool: UnifiedTool = {
   name: "opencode-session-list",
@@ -78,7 +83,8 @@ export const opencodeListSessionsTool: UnifiedTool = {
   category: "opencode",
   execute: async (args, onProgress) => {
     ensureConfigured();
-    const client = getOpenCodeClient();
+    const validatedArgs = listSessionsSchema.parse(args);
+    const client = getOpenCodeClient(validatedArgs.server);
 
     if (onProgress) {
       onProgress("Fetching OpenCode sessions...\n");
@@ -96,6 +102,7 @@ export const opencodeListSessionsTool: UnifiedTool = {
 
 // Get session tool
 const getSessionSchema = z.object({
+  server: z.string().optional().describe("OpenCode server ID (only in multi-server mode)"),
   sessionId: z.string().describe("The session ID to retrieve"),
 });
 
@@ -106,8 +113,8 @@ export const opencodeGetSessionTool: UnifiedTool = {
   category: "opencode",
   execute: async (args, onProgress) => {
     ensureConfigured();
-    const client = getOpenCodeClient();
     const validatedArgs = getSessionSchema.parse(args);
+    const client = getOpenCodeClient(validatedArgs.server);
 
     if (onProgress) {
       onProgress(`Fetching session ${validatedArgs.sessionId}...\n`);
@@ -121,6 +128,7 @@ export const opencodeGetSessionTool: UnifiedTool = {
 
 // Delete session tool
 const deleteSessionSchema = z.object({
+  server: z.string().optional().describe("OpenCode server ID (only in multi-server mode)"),
   sessionId: z.string().describe("The session ID to delete"),
 });
 
@@ -131,8 +139,8 @@ export const opencodeDeleteSessionTool: UnifiedTool = {
   category: "opencode",
   execute: async (args, onProgress) => {
     ensureConfigured();
-    const client = getOpenCodeClient();
     const validatedArgs = deleteSessionSchema.parse(args);
+    const client = getOpenCodeClient(validatedArgs.server);
 
     if (onProgress) {
       onProgress(`Deleting session ${validatedArgs.sessionId}...\n`);
@@ -146,6 +154,7 @@ export const opencodeDeleteSessionTool: UnifiedTool = {
 
 // Send message tool
 const sendMessageSchema = z.object({
+  server: z.string().optional().describe("OpenCode server ID (only in multi-server mode)"),
   sessionId: z.string().describe("The session ID to send the message to"),
   content: z.string().describe("The message content to send"),
 });
@@ -157,8 +166,8 @@ export const opencodeSendMessageTool: UnifiedTool = {
   category: "opencode",
   execute: async (args, onProgress) => {
     ensureConfigured();
-    const client = getOpenCodeClient();
     const validatedArgs = sendMessageSchema.parse(args);
+    const client = getOpenCodeClient(validatedArgs.server);
 
     if (onProgress) {
       onProgress(`Sending message to session ${validatedArgs.sessionId}...\n`);
@@ -176,6 +185,7 @@ export const opencodeSendMessageTool: UnifiedTool = {
 
 // Get messages tool
 const getMessagesSchema = z.object({
+  server: z.string().optional().describe("OpenCode server ID (only in multi-server mode)"),
   sessionId: z.string().describe("The session ID to get messages from"),
 });
 
@@ -186,8 +196,8 @@ export const opencodeGetMessagesTool: UnifiedTool = {
   category: "opencode",
   execute: async (args, onProgress) => {
     ensureConfigured();
-    const client = getOpenCodeClient();
     const validatedArgs = getMessagesSchema.parse(args);
+    const client = getOpenCodeClient(validatedArgs.server);
 
     if (onProgress) {
       onProgress(`Fetching messages from session ${validatedArgs.sessionId}...\n`);
@@ -205,6 +215,7 @@ export const opencodeGetMessagesTool: UnifiedTool = {
 
 // Find files tool
 const findFilesSchema = z.object({
+  server: z.string().optional().describe("OpenCode server ID (only in multi-server mode)"),
   query: z.string().describe("File name or pattern to search for"),
 });
 
@@ -215,8 +226,8 @@ export const opencodeFindFilesTool: UnifiedTool = {
   category: "opencode",
   execute: async (args, onProgress) => {
     ensureConfigured();
-    const client = getOpenCodeClient();
     const validatedArgs = findFilesSchema.parse(args);
+    const client = getOpenCodeClient(validatedArgs.server);
 
     if (onProgress) {
       onProgress(`Searching for files matching: ${validatedArgs.query}...\n`);
@@ -234,6 +245,7 @@ export const opencodeFindFilesTool: UnifiedTool = {
 
 // Search content tool
 const searchContentSchema = z.object({
+  server: z.string().optional().describe("OpenCode server ID (only in multi-server mode)"),
   pattern: z.string().describe("Text pattern to search for in file contents"),
 });
 
@@ -244,8 +256,8 @@ export const opencodeSearchContentTool: UnifiedTool = {
   category: "opencode",
   execute: async (args, onProgress) => {
     ensureConfigured();
-    const client = getOpenCodeClient();
     const validatedArgs = searchContentSchema.parse(args);
+    const client = getOpenCodeClient(validatedArgs.server);
 
     if (onProgress) {
       onProgress(`Searching for content pattern: ${validatedArgs.pattern}...\n`);
@@ -263,7 +275,8 @@ export const opencodeSearchContentTool: UnifiedTool = {
 
 // Get file content tool
 const getFileContentSchema = z.object({
-  path: z.string().describe("Path to the file to read"),
+  server: z.string().optional().describe("OpenCode server ID (only in multi-server mode)"),
+  path: z.string().describe("Path to file to read"),
 });
 
 export const opencodeGetFileContentTool: UnifiedTool = {
@@ -273,8 +286,8 @@ export const opencodeGetFileContentTool: UnifiedTool = {
   category: "opencode",
   execute: async (args, onProgress) => {
     ensureConfigured();
-    const client = getOpenCodeClient();
     const validatedArgs = getFileContentSchema.parse(args);
+    const client = getOpenCodeClient(validatedArgs.server);
 
     if (onProgress) {
       onProgress(`Reading file: ${validatedArgs.path}...\n`);
@@ -287,7 +300,9 @@ export const opencodeGetFileContentTool: UnifiedTool = {
 };
 
 // Get config tool
-const getConfigSchema = z.object({});
+const getConfigSchema = z.object({
+  server: z.string().optional().describe("OpenCode server ID (only in multi-server mode)")
+});
 
 export const opencodeGetConfigTool: UnifiedTool = {
   name: "opencode-config-get",
@@ -296,7 +311,8 @@ export const opencodeGetConfigTool: UnifiedTool = {
   category: "opencode",
   execute: async (args, onProgress) => {
     ensureConfigured();
-    const client = getOpenCodeClient();
+    const validatedArgs = getConfigSchema.parse(args);
+    const client = getOpenCodeClient(validatedArgs.server);
 
     if (onProgress) {
       onProgress("Fetching OpenCode configuration...\n");
@@ -309,7 +325,9 @@ export const opencodeGetConfigTool: UnifiedTool = {
 };
 
 // List providers tool
-const listProvidersSchema = z.object({});
+const listProvidersSchema = z.object({
+  server: z.string().optional().describe("OpenCode server ID (only in multi-server mode)")
+});
 
 export const opencodeListProvidersTool: UnifiedTool = {
   name: "opencode-providers-list",
@@ -318,7 +336,8 @@ export const opencodeListProvidersTool: UnifiedTool = {
   category: "opencode",
   execute: async (args, onProgress) => {
     ensureConfigured();
-    const client = getOpenCodeClient();
+    const validatedArgs = listProvidersSchema.parse(args);
+    const client = getOpenCodeClient(validatedArgs.server);
 
     if (onProgress) {
       onProgress("Fetching OpenCode providers...\n");

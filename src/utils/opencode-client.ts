@@ -146,7 +146,7 @@ export class OpenCodeClient {
   ): Promise<OpenCodeMessage> {
     const response = await this.fetch(`/session/${sessionId}/message`, {
       method: 'POST',
-      body: JSON.stringify({ content }),
+      body: JSON.stringify({ parts: [{ type: 'text', text: content }] }),
     });
     return response.json();
   }

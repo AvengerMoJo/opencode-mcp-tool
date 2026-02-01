@@ -7,6 +7,7 @@ import { Logger } from "./utils/logger.js";
 import { setServerConfig, getServerConfig } from "./config.js";
 import { setOpenCodeServerConfig, isOpenCodeServerConfigured } from "./opencode-server-config.js";
 import { createMCPServer, setupProgressNotifications, setupRequestHandlers } from "./server-core.js";
+import { loadInitialConfig, startConfigWatcher, stopConfigWatcher } from "./config-watcher.js";
 
 const DEBUG_MODE = process.env.DEBUG === "true";
 
@@ -31,6 +32,7 @@ async function main() {
     .option("--opencode-username <username>", "OpenCode server HTTP basic auth username (default: opencode)", "opencode")
     .option("--opencode-password <password>", "OpenCode server HTTP basic auth password")
     .option("--opencode-insecure", "Disable SSL certificate verification (allows self-signed certs, dev/testing only)")
+    .option("--servers-config <path>", "Path to servers configuration JSON file (enables multi-server mode)")
     .parse(process.argv);
 
   const options = program.opts();
@@ -47,8 +49,24 @@ async function main() {
     Logger.debug("fallback model:", config.fallbackModel);
   }
 
-  // Configure OpenCode server connection if provided
-  if (options.opencodeUrl) {
+  // Configure OpenCode server connection
+  if (options.serversConfig) {
+    // Multi-server mode
+    try {
+      const config = await loadInitialConfig(options.serversConfig);
+      const activeCount = config.servers.filter(s => s.status === 'active').length;
+      Logger.log(`Multi-server mode enabled: ${activeCount}/${config.servers.length} active servers from ${options.serversConfig}`);
+      if (config.default_server) {
+        Logger.log(`Default server: ${config.default_server}`);
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        throw new Error(`Failed to load servers config: ${error.message}`);
+      }
+      throw error;
+    }
+  } else if (options.opencodeUrl) {
+    // Single-server mode
     setOpenCodeServerConfig({
       baseUrl: options.opencodeUrl,
       username: options.opencodeUsername,
@@ -60,7 +78,7 @@ async function main() {
       Logger.warn("WARNING: SSL certificate verification is disabled (--opencode-insecure). This should only be used for development/testing.");
     }
   } else {
-    Logger.debug("OpenCode server API tools disabled (no --opencode-url provided)");
+    Logger.debug("OpenCode server API tools disabled (no --opencode-url or --servers-config provided)");
   }
 
   const bearerToken = options.bearerToken;
@@ -157,20 +175,25 @@ async function main() {
 
   httpServer.listen(port, host, () => {
     Logger.log(`opencode-mcp-tool HTTP server listening on http://${host}:${port}`);
-    process.on('SIGTERM', () => {
-      Logger.log('SIGTERM received, shutting down gracefully...');
+    
+    // Start config watcher if using multi-server mode
+    if (options.serversConfig) {
+      startConfigWatcher(options.serversConfig);
+    }
+    
+    const cleanup = () => {
+      Logger.log('Shutting down gracefully...');
+      if (options.serversConfig) {
+        stopConfigWatcher();
+      }
       httpServer.close(() => {
         Logger.log('HTTP server closed');
-	process.exit(0);
+        process.exit(0);
       });
-    });
-    process.on('SIGINT', () => {
-      Logger.log('SIGINT received, shutting down gracefully...');
-      httpServer.close(() => {
-        Logger.log('HTTP server closed');
-	process.exit(0);
-      });
-    });
+    };
+    
+    process.on('SIGTERM', cleanup);
+    process.on('SIGINT', cleanup);
   });
 }
 
