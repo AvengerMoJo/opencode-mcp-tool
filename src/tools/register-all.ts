@@ -1,4 +1,4 @@
-// Tool Registry Index - Registers all tools
+// Register all tools
 import { toolRegistry, registerTool } from './registry.js';
 import { askOpenCodeTool } from './ask-opencode.tool.js';
 import { pingTool, helpTool } from './simple-tools.js';
@@ -39,5 +39,3 @@ registerTool(opencodeSearchContentTool);
 registerTool(opencodeGetFileContentTool);
 registerTool(opencodeGetConfigTool);
 registerTool(opencodeListProvidersTool);
-
-export * from './registry.js';

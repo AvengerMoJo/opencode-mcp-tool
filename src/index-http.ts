@@ -90,7 +90,8 @@ async function main() {
     Logger.debug("OpenCode server API tools disabled (no --opencode-url or --servers-config provided)");
   }
 
-  const bearerToken = options.bearerToken;
+  // Bearer token: prefer CLI arg, fallback to environment variable
+  const bearerToken = options.bearerToken || process.env.MCP_BEARER_TOKEN;
   const debug = options.debug || DEBUG_MODE;
 
   const transport = new StreamableHTTPServerTransport({

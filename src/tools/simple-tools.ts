@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { UnifiedTool } from "./registry.js";
+import { UnifiedTool, registerTool } from "./registry.js";
 import { executeCommand } from "../utils/commandExecutor.js";
 
 const pingArgsSchema = z.object({
@@ -34,3 +34,6 @@ export const helpTool: UnifiedTool = {
     return executeCommand("opencode", ["--help"], onProgress);
   },
 };
+
+registerTool(pingTool);
+registerTool(helpTool);

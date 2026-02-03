@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { UnifiedTool } from './registry.js';
+import { UnifiedTool, registerTool } from './registry.js';
 
 const timeoutTestArgsSchema = z.object({
   duration: z.number().min(10).describe("Duration in milliseconds (minimum 10ms)"),
@@ -36,3 +36,5 @@ export const timeoutTestTool: UnifiedTool = {
     return results.join('\n');
   }
 };
+
+registerTool(timeoutTestTool);

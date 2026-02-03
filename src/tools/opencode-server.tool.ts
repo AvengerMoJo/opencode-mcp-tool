@@ -4,7 +4,7 @@
  */
 
 import { z } from "zod";
-import { UnifiedTool } from "./registry.js";
+import { UnifiedTool, registerTool } from "./registry.js";
 import { getOpenCodeClient, isOpenCodeServerConfigured, isMultiServerEnabled } from "../opencode-server-config.js";
 
 // Helper to check if OpenCode server is configured
@@ -352,3 +352,16 @@ export const opencodeListProvidersTool: UnifiedTool = {
     return JSON.stringify(providers, null, 2);
   },
 };
+
+registerTool(opencodeHealthTool);
+registerTool(opencodeCreateSessionTool);
+registerTool(opencodeListSessionsTool);
+registerTool(opencodeGetSessionTool);
+registerTool(opencodeDeleteSessionTool);
+registerTool(opencodeSendMessageTool);
+registerTool(opencodeGetMessagesTool);
+registerTool(opencodeFindFilesTool);
+registerTool(opencodeSearchContentTool);
+registerTool(opencodeGetFileContentTool);
+registerTool(opencodeGetConfigTool);
+registerTool(opencodeListProvidersTool);

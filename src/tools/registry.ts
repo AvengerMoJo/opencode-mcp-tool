@@ -22,7 +22,15 @@ export interface UnifiedTool {
   category?: 'simple' | 'opencode' | 'utility';
 }
 
-export const toolRegistry: UnifiedTool[] = [];
+export let toolRegistry: UnifiedTool[] = [];
+
+export function registerTool(tool: UnifiedTool) {
+  if (toolRegistry.length === 0) {
+    toolRegistry = [];
+  }
+  toolRegistry.push(tool);
+}
+
 export function toolExists(toolName: string): boolean {
   return toolRegistry.some(t => t.name === toolName);
 }

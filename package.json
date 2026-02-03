@@ -13,7 +13,7 @@
     "start": "node dist/index.js",
     "dev": "tsc && node dist/index.js",
     "dev:http": "tsc && node dist/index-http.js --model google/gemini-2.5-pro",
-    "test": "echo \"No tests yet\" && exit 0",
+    "test": "vitest run",
     "lint": "tsc --noEmit",
     "prepublishOnly": "echo 'Remember to test locally first.' && npm run build"
   },
@@ -53,7 +53,8 @@
     "@types/inquirer": "^9.0.0",
     "@types/node": "^20.0.0",
     "tsx": "^4.0.0",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "vitest": "^4.0.18"
   },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"

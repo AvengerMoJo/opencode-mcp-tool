@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { UnifiedTool } from './registry.js';
+import { UnifiedTool, registerTool } from './registry.js';
 import { executeOpenCodeCLI } from '../utils/opencodeExecutor.js';
 import {
   ERROR_MESSAGES,
@@ -59,3 +59,6 @@ export const opencodeBuildTool: UnifiedTool = {
     return executeSlashCommand(args, "build", onProgress);
   }
 };
+
+registerTool(opencodePlanTool);
+registerTool(opencodeBuildTool);

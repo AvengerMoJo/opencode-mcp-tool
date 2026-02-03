@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { UnifiedTool } from './registry.js';
+import { UnifiedTool, registerTool } from './registry.js';
 import { Logger } from '../utils/logger.js';
 import { executeOpenCodeCLI } from '../utils/opencodeExecutor.js';
 
@@ -169,3 +169,5 @@ export const brainstormTool: UnifiedTool = {
     return await executeOpenCodeCLI(enhancedPrompt, "plan", model as string | undefined, onProgress);
   }
 };
+
+registerTool(brainstormTool);
