@@ -38,12 +38,12 @@ async function main() {
   const options = program.opts();
 
   // Validate model requirement
-  if (!options.serversConfig && !options.opencodeUrl && !options.model) {
+  if (!options.serversConfig && !options.opencodeUrl && !options.model && options.model !== '') {
     throw new Error("--model is required when not using --servers-config or --opencode-url");
   }
 
   setServerConfig({
-    primaryModel: options.model,
+    primaryModel: options.model || '',
     fallbackModel: options.fallbackModel
   });
 
