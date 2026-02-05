@@ -25,10 +25,16 @@ export interface UnifiedTool {
 export let toolRegistry: UnifiedTool[] = [];
 
 export function registerTool(tool: UnifiedTool) {
-  if (toolRegistry.length === 0) {
-    toolRegistry = [];
+  // Check if tool already registered (prevents duplicates from hot reload/re-import)
+  const existingIndex = toolRegistry.findIndex(t => t.name === tool.name);
+
+  if (existingIndex >= 0) {
+    // Replace existing tool (allows hot reload to update tools)
+    toolRegistry[existingIndex] = tool;
+  } else {
+    // Add new tool
+    toolRegistry.push(tool);
   }
-  toolRegistry.push(tool);
 }
 
 export function toolExists(toolName: string): boolean {
