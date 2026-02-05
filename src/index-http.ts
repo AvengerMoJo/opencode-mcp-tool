@@ -137,6 +137,19 @@ async function main() {
       return;
     }
 
+    // Allow health checks without authentication
+    if (req.url === '/health') {
+      const healthResponse = {
+        status: "healthy",
+        service: "opencode-mcp-tool",
+        version: "1.1.4",
+        mode: options.serversConfig ? "multi-server" : "single-server"
+      };
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify(healthResponse));
+      return;
+    }
+
     if (bearerToken) {
       const authHeader = req.headers.authorization;
       if (debug) {
