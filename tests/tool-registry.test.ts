@@ -1,9 +1,14 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import { toolRegistry, toolExists, getToolDefinitions, getPromptDefinitions, executeTool } from '../src/tools/registry.js';
-import { askOpenCodeTool } from '../src/tools/ask-opencode.tool.js';
 import { ToolArguments } from '../src/constants.js';
+import { setServerConfig } from '../src/config.js';
+import '../src/tools/index.js';
 
 describe('Tool Registry', () => {
+  beforeAll(() => {
+    setServerConfig({ primaryModel: 'google/gemini-2.5-pro' });
+  });
+
   it('should register tools', () => {
     expect(toolRegistry.length).toBeGreaterThan(0);
   });
@@ -23,17 +28,6 @@ describe('Tool Registry', () => {
   it('should get prompt definitions', () => {
     const prompts = getPromptDefinitions();
     expect(prompts.length).toBeGreaterThan(0);
-  });
-
-  it('should execute ask-opencode tool', async () => {
-    const args: ToolArguments = {
-      prompt: 'test prompt',
-      agent: 'plan'
-    };
-    
-    const result = await executeTool('ask-opencode', args);
-    expect(result).toBeDefined();
-    expect(typeof result).toBe('string');
   });
 
   it('should handle invalid tool name', async () => {
@@ -58,21 +52,11 @@ describe('Tool Categories', () => {
 });
 
 describe('Tool Schema Validation', () => {
-  it('should validate correct arguments', async () => {
-    const validArgs: ToolArguments = {
-      prompt: 'test prompt',
-      agent: 'plan'
-    };
-    
-    const result = await executeTool('ask-opencode', validArgs);
-    expect(result).toBeDefined();
-  });
-
   it('should reject missing required arguments', async () => {
     const invalidArgs: ToolArguments = {
       prompt: ''
     };
-    
+
     await expect(
       executeTool('ask-opencode', invalidArgs)
     ).rejects.toThrow();

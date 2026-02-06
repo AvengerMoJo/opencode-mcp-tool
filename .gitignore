@@ -16,3 +16,4 @@ tmp-npm-cache/
 *.dxt
 extension-build/
 CLAUDE.md
+nohup.out
