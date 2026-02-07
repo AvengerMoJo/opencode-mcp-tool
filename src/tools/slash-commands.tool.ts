@@ -60,5 +60,7 @@ export const opencodeBuildTool: UnifiedTool = {
   }
 };
 
-registerTool(opencodePlanTool);
-registerTool(opencodeBuildTool);
+// Disabled: CLI tools spawn separate processes and bypass web server architecture
+// Use session-based tools instead: opencode-session-message, opencode-session-create
+// registerTool(opencodePlanTool);
+// registerTool(opencodeBuildTool);

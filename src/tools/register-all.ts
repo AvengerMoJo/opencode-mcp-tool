@@ -20,13 +20,15 @@ import {
   opencodeListProvidersTool,
 } from './opencode-server.tool.js';
 
-registerTool(askOpenCodeTool);
+// Disabled: CLI tools spawn separate processes and bypass web server architecture
+// registerTool(askOpenCodeTool);
 registerTool(pingTool);
 registerTool(helpTool);
 registerTool(brainstormTool);
 registerTool(timeoutTestTool);
-registerTool(opencodePlanTool);
-registerTool(opencodeBuildTool);
+// Disabled: CLI tools spawn separate processes and bypass web server architecture
+// registerTool(opencodePlanTool);
+// registerTool(opencodeBuildTool);
 registerTool(opencodeHealthTool);
 registerTool(opencodeCreateSessionTool);
 registerTool(opencodeListSessionsTool);
